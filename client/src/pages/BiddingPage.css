@@ -1,0 +1,249 @@
+.bidding-page {
+  min-height: calc(100vh - 80px);
+  padding: 2rem 0;
+  background: #f8f9fa;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.page-header h1 {
+  font-size: 2.5rem;
+  margin: 0 0 1rem 0;
+  color: #333;
+}
+
+.page-header p {
+  font-size: 1.1rem;
+  color: #666;
+  margin: 0;
+}
+
+.bidding-info {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 3rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.bidding-info h2 {
+  margin: 0 0 2rem 0;
+  color: #333;
+  text-align: center;
+}
+
+.info-points {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+}
+
+.info-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.point-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.info-point h4 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.info-point p {
+  margin: 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+}
+
+.category-bid-card {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
+.category-bid-card:hover {
+  transform: translateY(-2px);
+}
+
+.category-header h3 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-size: 1.3rem;
+}
+
+.category-header p {
+  margin: 0 0 1.5rem 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.current-holder {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #667eea;
+}
+
+.current-holder.current-winner {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border-left-color: #fff;
+}
+
+.current-holder h4 {
+  margin: 0 0 0.75rem 0;
+  color: inherit;
+  font-size: 1rem;
+}
+
+.current-holder p {
+  margin: 0 0 0.5rem 0;
+  color: inherit;
+  opacity: 0.9;
+}
+
+.current-holder p:last-child {
+  margin-bottom: 0;
+}
+
+.bidding-section {
+  border-top: 1px solid #e9ecef;
+  padding-top: 1.5rem;
+}
+
+.existing-bid h4,
+.new-bid h4 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.bid-amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #667eea;
+  margin: 0 0 0.5rem 0;
+}
+
+.bid-status {
+  margin: 0 0 1.5rem 0;
+  color: #666;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.update-bid,
+.new-bid {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.update-bid input,
+.new-bid input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.update-bid input:focus,
+.new-bid input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.bid-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.2s;
+}
+
+.bid-button:hover {
+  transform: translateY(-1px);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .page-header h1 {
+    font-size: 2rem;
+  }
+  
+  .info-points {
+    grid-template-columns: 1fr;
+  }
+  
+  .categories-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .category-bid-card {
+    padding: 1.5rem;
+  }
+  
+  .update-bid,
+  .new-bid {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .bid-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .bidding-page {
+    padding: 1rem 0;
+  }
+  
+  .bidding-info,
+  .category-bid-card {
+    padding: 1rem;
+  }
+  
+  .current-holder {
+    padding: 1rem;
+  }
+}
