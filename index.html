@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auction System</title>
+    <title>Royal Auction House</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Cormorant+Garamond:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
-                <h2>AuctionHub</h2>
+                <h2>Royal Auction House</h2>
             </div>
             <ul class="nav-menu">
                 <li class="nav-item">
@@ -21,6 +22,12 @@
                 </li>
                 <li class="nav-item">
                     <a href="#bidding" class="nav-link" onclick="showSection('bidding')">Active Auctions</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#notifications" class="nav-link" onclick="showSection('notifications')">
+                        Notifications
+                        <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
+                    </a>
                 </li>
                 <li class="nav-item">
                     <a href="#analytics" class="nav-link" onclick="showSection('analytics')">Analytics</a>
@@ -55,7 +62,7 @@
     <main class="container">
         <!-- Home Section -->
         <section id="home" class="section active">
-            <h1>Welcome to AuctionHub</h1>
+            <h1>Welcome to Royal Auction House</h1>
             <div class="dashboard-grid">
                 <div class="card">
                     <h3>Active Auctions</h3>
@@ -78,13 +85,32 @@
 
         <!-- Categories Section -->
         <section id="categories" class="section">
-            <h2>Category Management</h2>
-            <div class="category-controls">
-                <input type="text" id="categoryName" placeholder="Category Name">
-                <button onclick="addCategory()">Add Category</button>
+            <h2>Browse Categories</h2>
+            <div class="category-filters">
+                <button class="filter-btn active" onclick="filterCategory('all')">All Categories</button>
+                <button class="filter-btn" onclick="filterCategory('Electronics')">Electronics</button>
+                <button class="filter-btn" onclick="filterCategory('Art & Collectibles')">Art & Collectibles</button>
+                <button class="filter-btn" onclick="filterCategory('Vehicles')">Vehicles</button>
+                <button class="filter-btn" onclick="filterCategory('Home & Garden')">Home & Garden</button>
             </div>
             <div id="categoriesList" class="categories-grid">
                 <!-- Categories will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Notifications Section -->
+        <section id="notifications" class="section">
+            <h2>Notifications & Awards</h2>
+            <div class="notifications-container">
+                <div class="notification-filters">
+                    <button class="filter-btn active" onclick="filterNotifications('all')">All</button>
+                    <button class="filter-btn" onclick="filterNotifications('awards')">Awards</button>
+                    <button class="filter-btn" onclick="filterNotifications('bids')">Bid Updates</button>
+                    <button class="filter-btn" onclick="filterNotifications('system')">System</button>
+                </div>
+                <div id="notificationsList" class="notifications-list">
+                    <!-- Notifications will be loaded here -->
+                </div>
             </div>
         </section>
 
@@ -175,6 +201,16 @@
             <h2>Admin Dashboard</h2>
             <div class="admin-grid">
                 <div class="card">
+                    <h3>Category Management</h3>
+                    <div class="category-controls">
+                        <input type="text" id="categoryName" placeholder="Category Name">
+                        <button onclick="addCategory()">Add Category</button>
+                    </div>
+                    <div id="adminCategoriesList" class="admin-categories-list">
+                        <!-- Admin categories will be loaded here -->
+                    </div>
+                </div>
+                <div class="card">
                     <h3>User Management</h3>
                     <button onclick="showUserManagement()">Manage Users</button>
                     <div id="userManagement" style="display: none;">
@@ -188,6 +224,21 @@
                             <button onclick="addUser()">Add User</button>
                         </div>
                         <div id="usersList"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Product Management</h3>
+                    <div id="addProductSection">
+                        <div class="product-controls">
+                            <input type="text" id="productTitle" placeholder="Product Title">
+                            <textarea id="productDescription" placeholder="Product Description"></textarea>
+                            <input type="number" id="productPrice" placeholder="Starting Price" min="1">
+                            <select id="productCategory">
+                                <option value="">Select Category</option>
+                            </select>
+                            <button id="addProductBtn" onclick="addProduct()" disabled>Add Product</button>
+                            <p id="addProductMessage" class="restriction-message">Only auction winners can add products in their won categories.</p>
+                        </div>
                     </div>
                 </div>
                 <div class="card">

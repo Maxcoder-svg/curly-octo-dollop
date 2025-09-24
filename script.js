@@ -3,6 +3,8 @@ let currentUser = null;
 let categories = [];
 let auctions = [];
 let users = [];
+let notifications = [];
+let userWins = {}; // Track user wins by category
 let settings = {
     defaultAuctionDuration: 7,
     minBidIncrement: 1,
@@ -33,6 +35,8 @@ function saveData() {
         categories,
         auctions,
         users,
+        notifications,
+        userWins,
         settings,
         currentUser
     }));
@@ -45,6 +49,8 @@ function loadData() {
         categories = parsed.categories || [];
         auctions = parsed.auctions || [];
         users = parsed.users || [];
+        notifications = parsed.notifications || [];
+        userWins = parsed.userWins || {};
         settings = parsed.settings || settings;
         currentUser = parsed.currentUser || null;
     } else {
@@ -53,6 +59,7 @@ function loadData() {
     }
     
     updateLoginButton();
+    updateNotificationBadge();
 }
 
 function initializeDefaultData() {
@@ -119,7 +126,10 @@ function showSection(sectionId) {
     });
     
     // Show selected section
-    document.getElementById(sectionId).classList.add('active');
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.classList.add('active');
+    }
     
     // Update navigation active state
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -132,11 +142,14 @@ function showSection(sectionId) {
             updateDashboard();
             break;
         case 'categories':
-            loadCategories();
+            loadCategoriesForBrowsing();
             break;
         case 'bidding':
             loadAuctions();
             loadCategoryOptions();
+            break;
+        case 'notifications':
+            loadNotifications();
             break;
         case 'analytics':
             loadAnalytics();
@@ -197,9 +210,86 @@ function updateLoginButton() {
     const loginBtn = document.getElementById('loginBtn');
     if (currentUser) {
         loginBtn.textContent = `Logout (${currentUser.username})`;
+        
+        // Check for new awards when user logs in
+        checkForNewAwards();
     } else {
         loginBtn.textContent = 'Login';
     }
+}
+
+// Notification system
+function addNotification(type, title, message, relatedId = null) {
+    const notification = {
+        id: Date.now(),
+        type: type, // 'award', 'bid', 'system'
+        title: title,
+        message: message,
+        timestamp: new Date().toISOString(),
+        read: false,
+        relatedId: relatedId
+    };
+    
+    notifications.unshift(notification);
+    
+    // Keep only last 50 notifications
+    if (notifications.length > 50) {
+        notifications = notifications.slice(0, 50);
+    }
+    
+    updateNotificationBadge();
+    saveData();
+}
+
+function updateNotificationBadge() {
+    const badge = document.getElementById('notificationBadge');
+    const unreadCount = notifications.filter(n => !n.read && (n.type === 'award' || n.type === 'system')).length;
+    
+    if (unreadCount > 0) {
+        badge.textContent = unreadCount;
+        badge.style.display = 'inline';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function checkForNewAwards() {
+    if (!currentUser) return;
+    
+    const userAuctions = auctions.filter(a => 
+        a.status === 'ended' && 
+        a.winner && 
+        a.bids.some(b => b.userId === currentUser.id && b.amount === a.winningBid)
+    );
+    
+    userAuctions.forEach(auction => {
+        const existingNotification = notifications.find(n => 
+            n.type === 'award' && n.relatedId === auction.id
+        );
+        
+        if (!existingNotification) {
+            addNotification('award', 
+                '🏆 Congratulations! You Won!', 
+                `You won the auction "${auction.title}" with a bid of $${auction.winningBid}! You can now add products in the ${auction.category} category.`,
+                auction.id
+            );
+            
+            // Track user wins by category
+            if (!userWins[currentUser.id]) {
+                userWins[currentUser.id] = [];
+            }
+            if (!userWins[currentUser.id].includes(auction.category)) {
+                userWins[currentUser.id].push(auction.category);
+            }
+            
+            // Show alert for first-time login after winning
+            setTimeout(() => {
+                alert(`🏆 Congratulations! You won the auction "${auction.title}"! Check your notifications for details.`);
+            }, 1000);
+        }
+    });
+    
+    saveData();
 }
 
 // Dashboard functions
@@ -229,17 +319,73 @@ function getTodaysBidsCount() {
 }
 
 // Category management functions
-function loadCategories() {
+function loadCategoriesForBrowsing() {
     const container = document.getElementById('categoriesList');
     container.innerHTML = '';
     
     categories.forEach(category => {
+        const categoryCount = auctions.filter(a => a.category === category.name && a.status === 'active').length;
+        
         const categoryDiv = document.createElement('div');
         categoryDiv.className = 'category-item';
         categoryDiv.innerHTML = `
             <h4>${category.name}</h4>
-            <p>${category.count || 0} auctions</p>
-            <button onclick="deleteCategory(${category.id})" style="background: var(--danger); margin-top: 0.5rem;">Delete</button>
+            <p>${categoryCount} active auctions</p>
+        `;
+        categoryDiv.onclick = () => filterAuctionsByCategory(category.name);
+        container.appendChild(categoryDiv);
+    });
+}
+
+function filterCategory(categoryName) {
+    // Update active filter button
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    const categoryItems = document.querySelectorAll('.category-item');
+    categoryItems.forEach(item => {
+        const categoryTitle = item.querySelector('h4').textContent;
+        if (categoryName === 'all' || categoryTitle === categoryName) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function filterAuctionsByCategory(categoryName) {
+    showSection('bidding');
+    // Filter auctions by category after a short delay
+    setTimeout(() => {
+        const auctionItems = document.querySelectorAll('.auction-item');
+        auctionItems.forEach(item => {
+            const auctionCategory = item.querySelector('p').textContent;
+            if (auctionCategory.includes(categoryName)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }, 100);
+}
+
+function loadCategories() {
+    const container = document.getElementById('adminCategoriesList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    categories.forEach(category => {
+        const categoryDiv = document.createElement('div');
+        categoryDiv.className = 'admin-category-item';
+        categoryDiv.innerHTML = `
+            <div>
+                <strong>${category.name}</strong>
+                <span>(${category.count || 0} auctions)</span>
+            </div>
+            <button onclick="deleteCategory(${category.id})" style="background: var(--danger); width: auto; margin-bottom: 0;">Delete</button>
         `;
         container.appendChild(categoryDiv);
     });
@@ -268,6 +414,8 @@ function addCategory() {
     loadCategories();
     updateDashboard();
     document.getElementById('categoryName').value = '';
+    
+    addNotification('system', 'Category Added', `New category "${name}" has been added to the system.`);
 }
 
 function deleteCategory(id) {
@@ -276,7 +424,157 @@ function deleteCategory(id) {
         saveData();
         loadCategories();
         updateDashboard();
+        
+        addNotification('system', 'Category Deleted', `A category has been removed from the system.`);
     }
+}
+
+// Notification functions
+function loadNotifications() {
+    const container = document.getElementById('notificationsList');
+    container.innerHTML = '';
+    
+    if (notifications.length === 0) {
+        container.innerHTML = '<div class="notification-item">No notifications yet.</div>';
+        return;
+    }
+    
+    notifications.forEach(notification => {
+        const notificationDiv = document.createElement('div');
+        notificationDiv.className = `notification-item ${notification.type}`;
+        notificationDiv.innerHTML = `
+            <div class="notification-header">
+                <span class="notification-title">${notification.title}</span>
+                <span class="notification-time">${new Date(notification.timestamp).toLocaleString()}</span>
+            </div>
+            <div class="notification-message">${notification.message}</div>
+        `;
+        
+        if (!notification.read) {
+            notificationDiv.style.fontWeight = 'bold';
+        }
+        
+        // Mark as read when clicked
+        notificationDiv.onclick = () => {
+            notification.read = true;
+            updateNotificationBadge();
+            saveData();
+            notificationDiv.style.fontWeight = 'normal';
+        };
+        
+        container.appendChild(notificationDiv);
+    });
+}
+
+function filterNotifications(type) {
+    // Update active filter button
+    document.querySelectorAll('.notification-filters .filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    const notificationItems = document.querySelectorAll('.notification-item');
+    notificationItems.forEach(item => {
+        if (type === 'all' || item.classList.contains(type)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Product management functions
+function checkAddProductPermission() {
+    const addProductBtn = document.getElementById('addProductBtn');
+    const addProductMessage = document.getElementById('addProductMessage');
+    const productCategory = document.getElementById('productCategory');
+    
+    if (!currentUser) {
+        addProductBtn.disabled = true;
+        addProductMessage.textContent = 'Please login to add products.';
+        return;
+    }
+    
+    const userWinCategories = userWins[currentUser.id] || [];
+    
+    // Load categories for product category dropdown
+    productCategory.innerHTML = '<option value="">Select Category</option>';
+    userWinCategories.forEach(categoryName => {
+        const option = document.createElement('option');
+        option.value = categoryName;
+        option.textContent = categoryName;
+        productCategory.appendChild(option);
+    });
+    
+    if (userWinCategories.length === 0) {
+        addProductBtn.disabled = true;
+        addProductMessage.textContent = 'Only auction winners can add products in their won categories. Win an auction first!';
+    } else {
+        addProductBtn.disabled = false;
+        addProductMessage.textContent = `You can add products in: ${userWinCategories.join(', ')}`;
+        addProductMessage.style.color = 'var(--success)';
+    }
+}
+
+function addProduct() {
+    if (!currentUser) {
+        alert('Please login first');
+        return;
+    }
+    
+    const title = document.getElementById('productTitle').value.trim();
+    const description = document.getElementById('productDescription').value.trim();
+    const price = parseFloat(document.getElementById('productPrice').value);
+    const category = document.getElementById('productCategory').value;
+    
+    if (!title || !description || !price || !category) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    const userWinCategories = userWins[currentUser.id] || [];
+    if (!userWinCategories.includes(category)) {
+        alert('You can only add products in categories where you have won auctions');
+        return;
+    }
+    
+    // Create new auction for the product
+    const endTime = new Date();
+    endTime.setDate(endTime.getDate() + settings.defaultAuctionDuration);
+    
+    const newAuction = {
+        id: Date.now(),
+        title: title,
+        description: description,
+        startingPrice: price,
+        currentPrice: price,
+        endTime: endTime.toISOString(),
+        category: category,
+        bids: [],
+        status: 'active',
+        createdBy: currentUser.id
+    };
+    
+    auctions.push(newAuction);
+    
+    // Update category count
+    const cat = categories.find(c => c.name === category);
+    if (cat) {
+        cat.count++;
+    }
+    
+    saveData();
+    
+    // Clear form
+    document.getElementById('productTitle').value = '';
+    document.getElementById('productDescription').value = '';
+    document.getElementById('productPrice').value = '';
+    document.getElementById('productCategory').value = '';
+    
+    addNotification('system', 'Product Added', `Your product "${title}" has been added as a new auction in the ${category} category.`);
+    
+    alert('Product successfully added as a new auction!');
+    updateDashboard();
 }
 
 // Auction functions
@@ -433,6 +731,13 @@ function placeBid(auctionId) {
     auction.bids.push(bid);
     auction.currentPrice = bidAmount;
     
+    // Add bid notification
+    addNotification('bid', 
+        'New Bid Placed', 
+        `${currentUser.username} placed a bid of $${bidAmount} on "${auction.title}"`,
+        auctionId
+    );
+    
     saveData();
     loadAuctions();
     bidInput.value = '';
@@ -448,6 +753,25 @@ function awardAuction(auction) {
     const winner = users.find(u => u.id === highestBid.userId);
     auction.winner = winner ? winner.username : 'Unknown';
     auction.winningBid = highestBid.amount;
+    
+    // Track user wins by category
+    if (winner) {
+        if (!userWins[winner.id]) {
+            userWins[winner.id] = [];
+        }
+        if (!userWins[winner.id].includes(auction.category)) {
+            userWins[winner.id].push(auction.category);
+        }
+        
+        // Add award notification
+        addNotification('award', 
+            '🏆 Auction Won!', 
+            `${winner.username} won the auction "${auction.title}" with a bid of $${highestBid.amount}! They can now add products in the ${auction.category} category.`,
+            auction.id
+        );
+    }
+    
+    saveData();
 }
 
 function formatTimeLeft(milliseconds) {
@@ -605,7 +929,9 @@ function saveSystemSettings() {
 
 // Admin functions
 function loadAdminSection() {
+    loadCategories();
     loadValidityDates();
+    checkAddProductPermission();
 }
 
 function showUserManagement() {
