@@ -6,7 +6,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
-const { initDatabase, insertDefaultCategories, createAdminUser } = require('./config/database');
+const { initDatabase, insertDefaultCategories, createAdminUser, initializeSystemSettings } = require('./config/database');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -14,6 +14,11 @@ const categoryRoutes = require('./routes/categories');
 const bidRoutes = require('./routes/bids');
 const productRoutes = require('./routes/products');
 const notificationRoutes = require('./routes/notifications');
+const cartRoutes = require('./routes/cart');
+const reviewRoutes = require('./routes/reviews');
+const settingsRoutes = require('./routes/settings');
+const analyticsRoutes = require('./routes/analytics');
+const userRoutes = require('./routes/users');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,10 +27,16 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 app.use(morgan('combined'));
 
-// Rate limiting
+// Rate limiting - More permissive limits for development and production use
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === 'production' ? 500 : 1000, // Higher limits for better user experience
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: Math.round(15 * 60 * 1000 / 1000) // seconds
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
@@ -49,6 +60,11 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/bids', bidRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -96,6 +112,7 @@ const startServer = async () => {
     await initDatabase();
     await insertDefaultCategories();
     await createAdminUser();
+    await initializeSystemSettings();
     
     console.log('Database initialized successfully');
     console.log('Default admin user created: admin@marketplace.com / admin123');
