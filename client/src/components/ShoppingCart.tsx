@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import './ShoppingCart.css';
@@ -26,13 +26,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (isOpen && state.isAuthenticated) {
-      fetchCartItems();
-    }
-  }, [isOpen, state.isAuthenticated]);
-
-  const fetchCartItems = async () => {
+  const fetchCartItems = useCallback(async () => {
     if (!state.isAuthenticated) return;
     
     setLoading(true);
@@ -44,7 +38,13 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({ isOpen, onClose }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [state.isAuthenticated]);
+
+  useEffect(() => {
+    if (isOpen && state.isAuthenticated) {
+      fetchCartItems();
+    }
+  }, [isOpen, state.isAuthenticated, fetchCartItems]);
 
   const updateQuantity = async (cartItemId: number, newQuantity: number) => {
     if (newQuantity < 1) return;
@@ -66,7 +66,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({ isOpen, onClose }) => {
   };
 
   const removeItem = async (cartItemId: number) => {
-    if (!confirm('Remove this item from your cart?')) return;
+    if (!window.confirm('Remove this item from your cart?')) return;
     
     try {
       await api.delete(`/cart/${cartItemId}`);
@@ -78,7 +78,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({ isOpen, onClose }) => {
   };
 
   const clearCart = async () => {
-    if (!confirm('Remove all items from your cart?')) return;
+    if (!window.confirm('Remove all items from your cart?')) return;
     
     try {
       await api.delete('/cart');
