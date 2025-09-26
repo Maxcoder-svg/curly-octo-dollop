@@ -3,7 +3,17 @@ const path = require('path');
 
 // Create a new product
 const createProduct = (req, res) => {
-  const { title, description, price, category_id } = req.body;
+  const { 
+    title, 
+    description, 
+    detailed_description, 
+    price, 
+    category_id,
+    location_lat,
+    location_lng,
+    location_address,
+    media_urls 
+  } = req.body;
   const seller_id = req.user.id;
   
   if (!title || !price || !category_id) {
@@ -14,16 +24,22 @@ const createProduct = (req, res) => {
     return res.status(400).json({ error: 'Price must be positive' });
   }
   
-  // Check if user has active privileges for this category
-  db.get(`
-    SELECT id FROM category_privileges 
-    WHERE category_id = ? AND user_id = ? AND status = 'active' AND end_date > CURRENT_TIMESTAMP
-  `, [category_id, seller_id], (err, privilege) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    if (!privilege) {
+  // Check if user has active privileges for this category OR is admin
+  const checkPrivileges = req.user.role === 'admin' ? 
+    Promise.resolve(true) : 
+    new Promise((resolve, reject) => {
+      db.get(`
+        SELECT id FROM category_privileges 
+        WHERE category_id = ? AND user_id = ? AND status = 'active' 
+        AND (end_date > CURRENT_TIMESTAMP OR is_permanent = TRUE)
+      `, [category_id, seller_id], (err, privilege) => {
+        if (err) reject(err);
+        else resolve(!!privilege);
+      });
+    });
+  
+  checkPrivileges.then(hasPrivilege => {
+    if (!hasPrivilege) {
       return res.status(403).json({ 
         error: 'You do not have active selling privileges for this category' 
       });
@@ -31,28 +47,49 @@ const createProduct = (req, res) => {
     
     const image_url = req.file ? `/uploads/${req.file.filename}` : null;
     
-    db.run(
-      'INSERT INTO products (title, description, price, category_id, seller_id, image_url) VALUES (?, ?, ?, ?, ?, ?)',
-      [title, description, price, category_id, seller_id, image_url],
-      function(err) {
-        if (err) {
-          return res.status(500).json({ error: 'Failed to create product' });
-        }
-        
-        res.status(201).json({
-          message: 'Product created successfully',
-          product: {
-            id: this.lastID,
-            title,
-            description,
-            price,
-            category_id,
-            seller_id,
-            image_url
-          }
-        });
+    db.run(`
+      INSERT INTO products (
+        title, description, detailed_description, price, category_id, seller_id, 
+        image_url, location_lat, location_lng, location_address, media_urls
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      title, 
+      description, 
+      detailed_description, 
+      price, 
+      category_id, 
+      seller_id, 
+      image_url,
+      location_lat || null,
+      location_lng || null,
+      location_address || null,
+      media_urls ? JSON.stringify(media_urls) : null
+    ], function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to create product' });
       }
-    );
+      
+      res.status(201).json({
+        message: 'Product created successfully',
+        product: {
+          id: this.lastID,
+          title,
+          description,
+          detailed_description,
+          price,
+          category_id,
+          seller_id,
+          image_url,
+          location_lat,
+          location_lng,
+          location_address,
+          media_urls
+        }
+      });
+    });
+  }).catch(err => {
+    console.error('Privilege check error:', err);
+    return res.status(500).json({ error: 'Database error' });
   });
 };
 

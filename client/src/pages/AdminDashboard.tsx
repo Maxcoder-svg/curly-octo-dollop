@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { Category, Bid, User } from '../types';
+import { Category, Bid } from '../types';
 import './Dashboard.css';
 
 const AdminDashboard: React.FC = () => {

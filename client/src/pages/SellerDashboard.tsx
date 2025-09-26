@@ -2,33 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { Product, Bid, CategoryPrivilege } from '../types';
+import { Product, Bid } from '../types';
+import AddProduct from '../components/AddProduct';
+import SalesAnalytics from '../components/SalesAnalytics';
 import './Dashboard.css';
 
 const SellerDashboard: React.FC = () => {
   const { state } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
-  const [privileges, setPrivileges] = useState<CategoryPrivilege[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      const [productsRes, bidsRes] = await Promise.all([
+        api.get('/products/seller'),
+        api.get('/bids/user')
+      ]);
+      
+      setProducts(productsRes.data);
+      setBids(bidsRes.data);
+    } catch (error) {
+      console.error('Error fetching seller data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [productsRes, bidsRes] = await Promise.all([
-          api.get('/products/seller'),
-          api.get('/bids/user')
-        ]);
-        
-        setProducts(productsRes.data);
-        setBids(bidsRes.data);
-      } catch (error) {
-        console.error('Error fetching seller data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
 
@@ -38,6 +41,11 @@ const SellerDashboard: React.FC = () => {
 
   const activeBids = bids.filter(bid => bid.status === 'pending');
   const wonBids = bids.filter(bid => bid.status === 'accepted');
+  
+  const handleProductAdded = () => {
+    // Refresh products list
+    fetchData();
+  };
 
   return (
     <div className="dashboard">
@@ -67,7 +75,14 @@ const SellerDashboard: React.FC = () => {
             <h3>Manage Products</h3>
             <p>Add, edit, or remove your products from active categories</p>
             <div className="card-actions">
-              <button className="card-action" disabled>Add Product</button>
+              <button 
+                className="card-action"
+                onClick={() => setShowAddProduct(true)}
+                disabled={wonBids.length === 0}
+                title={wonBids.length === 0 ? "Win a category bid first to add products" : "Add a new product"}
+              >
+                Add Product
+              </button>
               {products.length > 0 && (
                 <Link to="/products?seller=me" className="card-action secondary">
                   View All
@@ -103,7 +118,12 @@ const SellerDashboard: React.FC = () => {
           <div className="dashboard-card">
             <h3>Sales Analytics</h3>
             <p>View your sales performance and revenue</p>
-            <button className="card-action" disabled>Coming Soon</button>
+            <button 
+              className="card-action"
+              onClick={() => setShowAnalytics(true)}
+            >
+              View Analytics
+            </button>
           </div>
         </div>
 
@@ -120,6 +140,20 @@ const SellerDashboard: React.FC = () => {
               </ul>
             </div>
           </div>
+        )}
+
+        {/* Modals */}
+        {showAddProduct && (
+          <AddProduct
+            onClose={() => setShowAddProduct(false)}
+            onSuccess={handleProductAdded}
+          />
+        )}
+
+        {showAnalytics && (
+          <SalesAnalytics
+            onClose={() => setShowAnalytics(false)}
+          />
         )}
       </div>
     </div>
